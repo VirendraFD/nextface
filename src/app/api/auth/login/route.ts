@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 400 });
     }
 
-    const token = generateToken(user._id, user.email);
+    const token = await generateToken(user._id, user.email);
 
       // Create a response with the token
     const response = NextResponse.json({
