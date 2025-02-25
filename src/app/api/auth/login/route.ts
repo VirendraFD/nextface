@@ -3,12 +3,13 @@ import User from "@/app/models/User";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { generateToken } from "@/app/utils/auth";
-import { cookies } from 'next/headers';
+import { cookies } from 'next/headers'
 
 
 
 export async function POST(req: Request) {
   try {
+    const cookieStore = await cookies();
     const { email, password } = await req.json();
     await connectDB();
 
@@ -36,14 +37,12 @@ export async function POST(req: Request) {
       },
     });
 
-    
-    // Set the token in a cookie or header (optional)
-    cookies().set('token', token, {
+    cookieStore.set({
+      name: 'token',
+      value: token,
       httpOnly: true,
-      //secure: process.env.NODE_ENV === 'production',
       maxAge: 86400, // 1 day in seconds
     });
-
 
     return response;
 
