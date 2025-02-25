@@ -3,6 +3,8 @@ import User from "@/app/models/User";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { generateToken } from "@/app/utils/auth";
+import { cookies } from 'next/headers';
+
 
 
 export async function POST(req: Request) {
@@ -34,8 +36,9 @@ export async function POST(req: Request) {
       },
     });
 
+    
     // Set the token in a cookie or header (optional)
-    response.cookies.set('token', token, {
+    cookies().set('token', token, {
       httpOnly: true,
       //secure: process.env.NODE_ENV === 'production',
       maxAge: 86400, // 1 day in seconds
