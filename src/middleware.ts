@@ -27,19 +27,10 @@ export async function middleware(request: NextRequest) {
     // Verify the token
     
     const decoded = await verifyToken(token);
-    console.log('token decoded: ', decoded.payload.userId, decoded.payload.email);
-    // Attach user information to the request headers
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set('user-id', decoded.payload.userId);
-    requestHeaders.set('user-email', decoded.payload.email);
-    // requestHeaders.set('user-role', decoded.role);
-
+    console.log('token decoded: ', decoded.userId);
+    
     // Continue to the requested route
-    return NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
-    });
+    return NextResponse.next();
   } catch (error) {
     console.log('here is problem',error);
     // Redirect to login if the token is invalid
