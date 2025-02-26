@@ -15,24 +15,22 @@ export async function middleware(request: NextRequest) {
   }
 
   // Get the token from cookies or headers
-  const token = request.cookies.get('token')?.value || request.headers.get('Authorization')?.split(' ')[1];
+  const token =
+    request.cookies.get('token')?.value ||
+    request.headers.get('Authorization')?.split(' ')[1];
 
-  
   if (!token) {
     // Redirect to login if no token is found
     return NextResponse.redirect(new URL('/login', request.url));
   }
-  
+
   try {
     // Verify the token
-    
-    const decoded = await verifyToken(token);
-    console.log('token decoded: ', decoded.userId);
-    
+
     // Continue to the requested route
     return NextResponse.next();
   } catch (error) {
-    console.log('here is problem',error);
+    console.log('here is problem', error);
     // Redirect to login if the token is invalid
     return NextResponse.redirect(new URL('/login', request.url));
   }
