@@ -99,7 +99,7 @@ export default function FaceDetection({
         setUploadResultMessage('Uploading image for verification...');
 
         await fetch(
-          `https://iti80r2th2.execute-api.us-east-1.amazonaws.com/dev/fixhr-visitor-images/${visitorImageName}.jpg`,
+          `https://iti80r2th2.execute-api.us-east-1.amazonaws.com/dev/fixhr-visitor-images/${business_unique_id}/${visitorImageName}.jpg`,
           {
             method: 'PUT',
             headers: { 'Content-Type': 'image/jpeg' },
@@ -244,7 +244,7 @@ export default function FaceDetection({
   const authenticate = async (visitorImageName: string) => {
     try {
       const response = await fetch(
-        `https://iti80r2th2.execute-api.us-east-1.amazonaws.com/dev/employee?objectKey=${visitorImageName}.jpg`,
+        `https://iti80r2th2.execute-api.us-east-1.amazonaws.com/dev/employee?objectKey=${business_unique_id}/${visitorImageName}.jpg`,
         {
           method: 'GET',
           headers: {
