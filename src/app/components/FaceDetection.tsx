@@ -99,7 +99,7 @@ export default function FaceDetection({
         setUploadResultMessage('Uploading image for verification...');
 
         await fetch(
-          `https://iti80r2th2.execute-api.us-east-1.amazonaws.com/dev/fixhr-visitor-images/${business_unique_id}/${visitorImageName}.jpg`,
+          `https://iti80r2th2.execute-api.us-east-1.amazonaws.com/dev/fixhr-visitor-images/${visitorImageName}.jpg`,
           {
             method: 'PUT',
             headers: { 'Content-Type': 'image/jpeg' },
@@ -130,7 +130,6 @@ export default function FaceDetection({
                   `Welcome, ${employeeData.data.name}. ${employeeData.data.attendance_message}`
                 );
               } else {
-                setAuth(false);
                 setUploadResultMessage(
                   `Hi ${employeeData.data.name}, ${employeeData.data.attendance_message}`
                 );
@@ -187,6 +186,7 @@ export default function FaceDetection({
   const BLINK_DELAY = 2000;
 
   const detectLiveness = async (imageBlob: Blob) => {
+    
     const image = await blobToImage(imageBlob);
     const detections = await faceapi
       .detectSingleFace(
@@ -213,7 +213,7 @@ export default function FaceDetection({
 
     if (isLeftEyeOpen && isRightEyeOpen) {
       if (lastBlinkTime > 0 && Date.now() - lastBlinkTime >= BLINK_DELAY) {
-        return true;
+        return checkHeadMovement(detections);
       }
     }
 
@@ -244,7 +244,7 @@ export default function FaceDetection({
   const authenticate = async (visitorImageName: string) => {
     try {
       const response = await fetch(
-        `https://iti80r2th2.execute-api.us-east-1.amazonaws.com/dev/employee?objectKey=${business_unique_id}/${visitorImageName}.jpg`,
+        `https://iti80r2th2.execute-api.us-east-1.amazonaws.com/dev/employee?objectKey=${visitorImageName}.jpg`,
         {
           method: 'GET',
           headers: {
