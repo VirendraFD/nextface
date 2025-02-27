@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 import * as faceapi from 'face-api.js';
 
+
 interface Employee {
   employeeId: string;
   name: string;
@@ -25,29 +26,26 @@ interface FaceDetectionProps {
 export default function FaceDetection({
   business_unique_id,
 }: FaceDetectionProps) {
-  
   const webcamRef = useRef<Webcam | null>(null);
-  const [uploadResultMessage, setUploadResultMessage] = useState(
-    'Please look at the camera'
-  );
+  const [uploadResultMessage, setUploadResultMessage] = useState('Please look at the camera');
   const [isAuth, setAuth] = useState(false);
   const [employee, setEmployee] = useState<Employee | null>(null);
-  const [prevFace, setPrevFace] = useState<{ x: number; y: number } | null>(
-    null
-  );
+  const [prevFace, setPrevFace] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     const loadModels = async () => {
       await faceapi.tf.setBackend('webgl');
       await faceapi.tf.ready();
+      
 
       try {
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri('/face-api/models'),
-          faceapi.nets.faceLandmark68Net.loadFromUri('/face-api/models'),
-          faceapi.nets.faceExpressionNet.loadFromUri('/face-api/models'),
-          faceapi.nets.ssdMobilenetv1.loadFromUri('/face-api/models'),
-        ]);
+        // Load all required models
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri('/face-api/models'),
+        faceapi.nets.faceLandmark68Net.loadFromUri('/face-api/models'), // Load Face Landmark model
+        faceapi.nets.faceExpressionNet.loadFromUri('/face-api/models'), // Load Face Expression model (optional)
+        faceapi.nets.ssdMobilenetv1.loadFromUri('/face-api/models') // Load SSD MobileNet model (optional for better accuracy)
+      ]);
         console.log('Face API models loaded successfully');
       } catch (error) {
         console.error('Failed to load models:', error);
@@ -76,20 +74,20 @@ export default function FaceDetection({
       if (!blob) return;
 
       const faceDetected = await detectFaceLocally(blob);
+      
       if (!faceDetected) {
-        setUploadResultMessage(
-          'No face detected. Please adjust your position.'
-        );
+        setUploadResultMessage('No face detected. Please adjust your position.');
         setAuth(false);
         return;
       }
 
       const faceLive = await detectLiveness(blob);
-      if (!faceLive) {
+      console.log('faceLive: ',faceLive);
+      if(!faceLive){
         setUploadResultMessage('Liveness check failed. Blink to verify.');
         setAuth(false);
         return;
-      } else {
+      }else{
         setUploadResultMessage('Liveness check success.');
       }
 
@@ -98,24 +96,18 @@ export default function FaceDetection({
       try {
         setUploadResultMessage('Uploading image for verification...');
 
-        await fetch(
-          `https://iti80r2th2.execute-api.us-east-1.amazonaws.com/dev/fixhr-visitor-images/${visitorImageName}.jpg`,
-          {
-            method: 'PUT',
-            headers: { 'Content-Type': 'image/jpeg' },
-            body: blob,
-          }
-        );
+        await fetch(`https://iti80r2th2.execute-api.us-east-1.amazonaws.com/dev/fixhr-visitor-images/${visitorImageName}.jpg`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'image/jpeg' },
+          body: blob,
+        });
 
         const response = await authenticate(visitorImageName);
         console.log('AWS response:', response);
 
         if (response?.Message === 'Success') {
           try {
-            const { data: employeeData } = await axios.get<{
-              status: boolean;
-              data: Employee;
-            }>(
+            const { data: employeeData } = await axios.get(
               `https://web.fixhr.app/api/face-detection/employee/${response.FaceId}`
             );
 
@@ -157,12 +149,14 @@ export default function FaceDetection({
     }, 'image/jpeg');
   }, []);
 
+
+  // Function to convert text to speech
   const speakMessage = (message: string) => {
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(message);
       utterance.lang = 'en-US';
-      utterance.rate = 1;
-      utterance.pitch = 1;
+      utterance.rate = 1; // Adjust speed (1 is normal speed)
+      utterance.pitch = 1; // Adjust pitch (1 is normal pitch)
       speechSynthesis.speak(utterance);
     } else {
       console.warn('Web Speech API is not supported in this browser.');
@@ -171,94 +165,91 @@ export default function FaceDetection({
 
   const detectFaceLocally = async (imageBlob: Blob) => {
     const image = await blobToImage(imageBlob);
-    const detections = await faceapi.detectAllFaces(
-      image,
-      new faceapi.TinyFaceDetectorOptions({
-        inputSize: 128,
-        scoreThreshold: 0.5,
-      })
-    );
+    const detections = await faceapi.detectAllFaces(image, new faceapi.TinyFaceDetectorOptions({
+      inputSize: 128,
+      scoreThreshold: 0.5,
+    }));
 
     return detections.length > 0;
   };
 
-  let lastBlinkTime = 0;
-  const BLINK_DELAY = 2000;
+  let lastBlinkTime = 0; // Store last blink timestamp
+  const BLINK_DELAY = 2000; // Minimum delay for detecting a blink (2 sec)
 
   const detectLiveness = async (imageBlob: Blob) => {
-    
     const image = await blobToImage(imageBlob);
-    const detections = await faceapi
-      .detectSingleFace(
-        image,
-        new faceapi.TinyFaceDetectorOptions({
-          inputSize: 128,
-          scoreThreshold: 0.5,
-        })
-      )
-      .withFaceLandmarks();
+    
+    // Detect face with landmarks
+    const detections = await faceapi.detectSingleFace(image, new faceapi.TinyFaceDetectorOptions({
+      inputSize: 96,
+      scoreThreshold: 0.5
+    })).withFaceLandmarks();
 
-    if (!detections) return false;
+    if (!detections) {
+      return false; // No face detected
+    }
 
+    // Get eye positions
     const leftEye = detections.landmarks.getLeftEye();
     const rightEye = detections.landmarks.getRightEye();
 
+    // Check if eyes are open
     const isLeftEyeOpen = checkEyeOpen(leftEye);
     const isRightEyeOpen = checkEyeOpen(rightEye);
-
+    
     if (!isLeftEyeOpen && !isRightEyeOpen) {
+      // Blink detected when both eyes are closed
       lastBlinkTime = Date.now();
-      return false;
+      return false; // Wait for eye re-opening
     }
 
     if (isLeftEyeOpen && isRightEyeOpen) {
       if (lastBlinkTime > 0 && Date.now() - lastBlinkTime >= BLINK_DELAY) {
-        return checkHeadMovement(detections);
+         return true; // Liveness verified after a proper blink
+         //return checkHeadMovement;
       }
     }
 
-    return false;
+    return false; // Not enough proof of liveness yet
   };
 
+  
+  // Function to check eye openness based on landmark distances
   const checkEyeOpen = (eye: any) => {
     const verticalDistance = Math.abs(eye[1].y - eye[5].y);
     const horizontalDistance = Math.abs(eye[0].x - eye[3].x);
-    return verticalDistance / horizontalDistance > 0.25;
+    return verticalDistance / horizontalDistance > 0.25; // Threshold for eye openness
   };
 
   const checkHeadMovement = (detections: any) => {
     if (!prevFace) {
       setPrevFace(detections.detection.box);
-      return false;
+      // return false;
+      return checkHeadMovement(detections);
     }
 
-    const movement =
-      Math.abs(detections.detection.box.x - prevFace.x) +
-      Math.abs(detections.detection.box.y - prevFace.y);
+    const movement = Math.abs(detections.detection.box.x - prevFace.x) + 
+                     Math.abs(detections.detection.box.y - prevFace.y);
 
     setPrevFace(detections.detection.box);
 
-    return movement > 10;
+    return movement > 10; // Ensure the user moved
   };
 
-  const authenticate = async (visitorImageName: string) => {
+
+
+  async function authenticate(visitorImageName: string) {
     try {
       const response = await fetch(
         `https://iti80r2th2.execute-api.us-east-1.amazonaws.com/dev/employee?objectKey=${visitorImageName}.jpg`,
-        {
-          method: 'GET',
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-        }
+        { method: 'GET', headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' } }
       );
       return await response.json();
     } catch (error) {
       console.error('Error:', error);
       return null;
     }
-  };
+  }
 
   const blobToImage = (blob: Blob): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
@@ -274,7 +265,7 @@ export default function FaceDetection({
 
     const startCapture = async () => {
       await captureAndSendImage();
-      timeout = setTimeout(startCapture, 5000);
+      timeout = setTimeout(startCapture, 5000); // Recapture every 4 seconds
     };
 
     startCapture();
@@ -287,11 +278,7 @@ export default function FaceDetection({
       <div className="bg-white rounded-2xl shadow-lg p-6 w-full max-w-4xl grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="flex flex-col items-center sm:items-start sm:col-span-2">
           <div className="w-450 h-150 rounded-xl overflow-hidden">
-            <Webcam
-              ref={webcamRef}
-              screenshotFormat="image/jpeg"
-              className="webcam"
-            />
+            <Webcam ref={webcamRef} screenshotFormat="image/jpeg" className="webcam" />
           </div>
         </div>
 
@@ -307,32 +294,26 @@ export default function FaceDetection({
           {isAuth && employee && (
             <>
               <h2 className="text-2xl font-bold text-gray-800">
-                <span>{employee.employeeId} -</span> {employee.name}
+                <span>{employee?.employeeId} -</span> {employee?.name}
               </h2>
-              <p className="text-sm text-gray-500 mb-4">
-                {employee.designation}
-              </p>
+              <p className="text-sm text-gray-500 mb-4">{employee?.designation}</p>
 
               <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    Department
-                  </p>
-                  <p className="text-base text-gray-900">
-                    {employee.department}
-                  </p>
+                  <p className="text-sm font-medium text-gray-600">Department</p>
+                  <p className="text-base text-gray-900">{employee?.department}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-600">Email</p>
-                  <p className="text-base text-gray-900">{employee.email}</p>
+                  <p className="text-base text-gray-900">{employee?.email}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-600">Phone</p>
-                  <p className="text-base text-gray-900">{employee.phone}</p>
+                  <p className="text-base text-gray-900">{employee?.phone}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-600">Location</p>
-                  <p className="text-base text-gray-900">{employee.address}</p>
+                  <p className="text-base text-gray-900">{employee?.address}</p>
                 </div>
               </div>
             </>

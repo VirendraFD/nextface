@@ -8,16 +8,19 @@ export default function Register() {
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     const res = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ business_unique_id: businessUniqueId, username, email, password }),
     });
 
+    setLoading(false);
     if (res.ok) {
       router.push('/login');
     } else {
@@ -36,6 +39,7 @@ export default function Register() {
           value={businessUniqueId}
           onChange={(e) => setBusinessUniqueId(e.target.value)}
           className="w-full p-2 mb-4 border rounded"
+          disabled={loading}
         />
         <input
           type="text"
@@ -43,6 +47,7 @@ export default function Register() {
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           className="w-full p-2 mb-4 border rounded"
+          disabled={loading}
         />
         
         <input
@@ -51,6 +56,7 @@ export default function Register() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="w-full p-2 mb-4 border rounded"
+          disabled={loading}
         />
         <input
           type="password"
@@ -58,12 +64,18 @@ export default function Register() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="w-full p-2 mb-4 border rounded"
+          disabled={loading}
         />
         <button
           type="submit"
           className="w-full p-2 bg-blue-500 text-white rounded"
+          disabled={loading}
         >
-          Register
+          {loading ? (
+            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          ) : (
+            'Register'
+          )}
         </button>
       </form>
     </div>
