@@ -81,15 +81,15 @@ export default function FaceDetection({
         return;
       }
 
-      const faceLive = await detectLiveness(blob);
-      console.log('faceLive: ',faceLive);
-      if(!faceLive){
-        setUploadResultMessage('Liveness check failed. Blink to verify.');
-        setAuth(false);
-        return;
-      }else{
-        setUploadResultMessage('Liveness check success.');
-      }
+      // const faceLive = await detectLiveness(blob);
+      // console.log('faceLive: ',faceLive);
+      // if(!faceLive){
+      //   setUploadResultMessage('Liveness check failed. Blink to verify.');
+      //   setAuth(false);
+      //   return;
+      // }else{
+      //   setUploadResultMessage('Liveness check success.');
+      // }
 
       const visitorImageName = uuidv4();
 
