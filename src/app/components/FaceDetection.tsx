@@ -206,7 +206,7 @@ export default function FaceDetection({
     if (isLeftEyeOpen && isRightEyeOpen) {
       if (lastBlinkTime > 0 && Date.now() - lastBlinkTime >= BLINK_DELAY) {
          return true; // Liveness verified after a proper blink
-         //return checkHeadMovement;
+         //return checkHeadMovement; 
       }
     }
 
